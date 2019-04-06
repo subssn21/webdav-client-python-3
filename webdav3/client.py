@@ -261,7 +261,8 @@ class Client(object):
 
         results = WebDavXmlUtils.parse_get_list_data_response(response.content)
 
-        return results
+        path = Urn.normalize_path(self.get_full_path(directory_urn))
+        return [result for result in results if Urn.compare_path(path, result['href']) is False]
 
     @wrap_connection_error
     def free(self):
