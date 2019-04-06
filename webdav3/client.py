@@ -238,9 +238,6 @@ class Client(object):
         :return: list of nested file or directory names.
         """
         directory_urn = Urn(remote_path, directory=True)
-        if directory_urn.path() != Client.root:
-            if not self.check(directory_urn.path()):
-                raise RemoteResourceNotFound(directory_urn.path())
 
         response = self.execute_request(action='list', path=directory_urn.quote())
         print(response.content)
@@ -258,11 +255,10 @@ class Client(object):
         :return: list of nested file or directory names.
         """
         directory_urn = Urn(remote_path, directory=True)
-        if directory_urn.path() != Client.root:
-            if not self.check(directory_urn.path()):
-                raise RemoteResourceNotFound(directory_urn.path())
 
         response = self.execute_request(action='list', path=directory_urn.quote())
+
+
         results = WebDavXmlUtils.parse_get_list_data_response(response.content)
 
         return results
@@ -290,7 +286,6 @@ class Client(object):
         try:
             response = self.execute_request(action='check', path=urn.quote())
         except ResponseErrorCode as ex:
-            print(ex.code)
             if ex.code == 404:
                 return False
             raise
@@ -309,9 +304,6 @@ class Client(object):
 
         """
         directory_urn = Urn(remote_path, directory=True)
-        if not self.check(directory_urn.parent()):
-            raise RemoteParentNotFound(directory_urn.path())
-
         response = self.execute_request(action='mkdir', path=directory_urn.quote())
         return response.status_code in (200, 201)
 
@@ -325,9 +317,6 @@ class Client(object):
         urn = Urn(remote_path)
         if self.is_dir(urn.path()):
             raise OptionNotValid(name="remote_path", value=remote_path)
-
-        if not self.check(urn.path()):
-            raise RemoteResourceNotFound(urn.path())
 
         response = self.execute_request(action='download', path=urn.quote())
         shutil.copyfileobj(response.raw, buff)
@@ -384,9 +373,6 @@ class Client(object):
         if os.path.isdir(local_path):
             raise OptionNotValid(name="local_path", value=local_path)
 
-        if not self.check(urn.path()):
-            raise RemoteResourceNotFound(urn.path())
-
         with open(local_path, 'wb') as local_file:
             response = self.execute_request('download', urn.quote())
             for block in response.iter_content(1024):
@@ -425,9 +411,6 @@ class Client(object):
         if urn.is_dir():
             raise OptionNotValid(name="remote_path", value=remote_path)
 
-        if not self.check(urn.parent()):
-            raise RemoteParentNotFound(urn.path())
-
         self.execute_request(action='upload', path=urn.quote(), data=buff)
 
     def upload(self, remote_path, local_path, progress=None):
@@ -463,9 +446,6 @@ class Client(object):
         if not os.path.exists(local_path):
             raise LocalResourceNotFound(local_path)
 
-        if self.check(urn.path()):
-            self.clean(urn.path())
-
         self.mkdir(remote_path)
 
         for resource_name in listdir(local_path):
@@ -491,9 +471,6 @@ class Client(object):
 
         if os.path.isdir(local_path):
             raise OptionNotValid(name="local_path", value=local_path)
-
-        if not self.check(urn.parent()):
-            raise RemoteParentNotFound(urn.path())
 
         with open(local_path, "rb") as local_file:
           self.execute_request(action='upload', path=urn.quote(), data=local_file)
@@ -531,12 +508,8 @@ class Client(object):
         :param remote_path_to: the path where resource will be copied.
         """
         urn_from = Urn(remote_path_from)
-        if not self.check(urn_from.path()):
-            raise RemoteResourceNotFound(urn_from.path())
 
         urn_to = Urn(remote_path_to)
-        if not self.check(urn_to.parent()):
-            raise RemoteParentNotFound(urn_to.path())
 
         header_destination = "Destination: {path}".format(path=self.get_full_path(urn_to))
         self.execute_request(action='copy', path=urn_from.quote(), headers_ext=[header_destination])
@@ -551,12 +524,8 @@ class Client(object):
         :param overwrite: (optional) the flag, overwrite file if it exists. Defaults is False
         """
         urn_from = Urn(remote_path_from)
-        if not self.check(urn_from.path()):
-            raise RemoteResourceNotFound(urn_from.path())
 
         urn_to = Urn(remote_path_to)
-        if not self.check(urn_to.parent()):
-            raise RemoteParentNotFound(urn_to.path())
 
         header_destination = "Destination: {path}".format(path=self.get_full_path(urn_to))
         header_overwrite = "Overwrite: {flag}".format(flag="T" if overwrite else "F")
@@ -586,8 +555,6 @@ class Client(object):
                  `modified`: date of resource modification.
         """
         urn = Urn(remote_path)
-        if not self.check(urn.path()) and not self.check(Urn(remote_path, directory=True).path()):
-            raise RemoteResourceNotFound(remote_path)
 
         response = self.execute_request(action='info', path=urn.quote())
         path = self.get_full_path(urn)
@@ -603,8 +570,6 @@ class Client(object):
         """
         urn = Urn(remote_path)
         parent_urn = Urn(urn.parent())
-        if not self.check(urn.path()) and not self.check(Urn(remote_path, directory=True).path()):
-            raise RemoteResourceNotFound(remote_path)
 
         response = self.execute_request(action='info', path=parent_urn.quote())
         path = self.get_full_path(urn)
@@ -622,8 +587,6 @@ class Client(object):
         :return: the value of property or None if property is not found.
         """
         urn = Urn(remote_path)
-        if not self.check(urn.path()):
-            raise RemoteResourceNotFound(urn.path())
 
         data = WebDavXmlUtils.create_get_property_request_content(option)
         response = self.execute_request(action='get_property', path=urn.quote(), data=data)
@@ -654,8 +617,6 @@ class Client(object):
                        `value`: (optional) the value of property which will be set. Defaults is empty string.
         """
         urn = Urn(remote_path)
-        if not self.check(urn.path()):
-            raise RemoteResourceNotFound(urn.path())
 
         data = WebDavXmlUtils.create_set_property_batch_request_content(option)
         self.execute_request(action='set_property', path=urn.quote(), data=data)
@@ -691,8 +652,7 @@ class Client(object):
                                                                      resource_name=local_resource_name)
 
             if os.path.isdir(local_path):
-                if not self.check(remote_path=remote_path):
-                    self.mkdir(remote_path=remote_path)
+                self.mkdir(remote_path=remote_path)
                 self.push(remote_directory=remote_path, local_directory=local_path)
             else:
                 if local_resource_name in remote_resource_names:
@@ -848,12 +808,15 @@ class WebDavXmlUtils:
             results = []
             for hree in tree.iterfind(".//{DAV:}response"):
                 data = {}
-                data['href'] = unquote(hree.findtext(".//{DAV:}href"))
+                href = hree.findtext(".//{DAV:}href")
+                urn = Urn(unquote(urlsplit(href).path))
+                data['href'] = unquote(href)
+                data['name'] = urn.filename()
                 data['creationdate'] = hree.findtext(".//{DAV:}creationdate")
                 data['displayname'] = hree.findtext(".//{DAV:}displayname")
                 data['contentlength'] = hree.findtext(".//{DAV:}getcontentlength")
                 data['lastmodified'] = hree.findtext(".//{DAV:}getlastmodified")
-                data['etag'] = hree.findtext(".//{DAV:}getetag")
+                data['etag'] = hree.findtext(".//{DAV:}getetag").strip("\"")
                 data['contenttype'] = hree.findtext(".//{DAV:}getcontenttype")
                 container = hree.find(".//{DAV:}resourcetype")
                 data['isdir'] = True if container.find("{DAV:}collection") is not None else False
