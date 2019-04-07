@@ -309,7 +309,7 @@ class Client(object):
         return response.status_code in (200, 201)
 
     @wrap_connection_error
-    def download_raw(self, buff, remote_path):
+    def download_raw(self, remote_path):
         """Downloads file from WebDAV and writes it in buffer.
 
         :param buff: buffer object for writing of downloaded file content.
