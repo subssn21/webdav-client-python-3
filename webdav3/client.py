@@ -316,11 +316,9 @@ class Client(object):
         :param remote_path: path to file on WebDAV server.
         """
         urn = Urn(remote_path)
-        if self.is_dir(urn.path()):
-            raise OptionNotValid(name="remote_path", value=remote_path)
 
         response = self.execute_request(action='download', path=urn.quote())
-        return response.raw
+        return response.raw.data
 
     @wrap_connection_error
     def download_from(self, buff, remote_path):
